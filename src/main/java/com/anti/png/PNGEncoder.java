@@ -1,263 +1,285 @@
-package com.anti.png;
-
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import javax.microedition.lcdui.Image;
 
 /*
- * Minimal PNG encoder to create PNG streams (and MIDP images) from RGBA arrays.
- * 
- * Copyright 2006-2009 Christian Fröschlin
- * 
- * www.chrfr.de
- * 
- * 
- * Changelog:
- * 
- * 09/22/08: Fixed Adler checksum calculation and byte order for storing length
- * of zlib deflate block. Thanks to Miloslav Ruzicka for noting this.
- * 
- * 05/12/09: Split PNG and ZLIB functionality into separate classes. Added
- * support for images > 64K by splitting the data into multiple uncompressed
- * deflate blocks.
- * 
- * 03/19/10: Re-packaged, and modified interface to be more MIDP-2 friendly,
- * using int[] rather than byte[] data.  Alpha channel is now optional, to
- * allow a smaller output size.  New toPNG() method works directly from an
- * Image object. (Graham Hughes, for Forum Nokia)
- * 
- * Terms of Use:
- * 
- * You may use the PNG encoder free of charge for any purpose you desire, as
- * long as you do not claim credit for the original sources and agree not to
- * hold me responsible for any damage arising out of its use.
- * 
- * If you have a suitable location in GUI or documentation for giving credit,
- * I'd appreciate a mention of
- * 
- * PNG encoder (C) 2006-2009 by Christian Fröschlin, www.chrfr.de
- * 
- * but that's not mandatory.
- * 
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
+ *
+ * Copyright 1997-2007 Sun Microsystems, Inc. All rights reserved.
+ *
+ * The contents of this file are subject to the terms of either the GNU
+ * General Public License Version 2 only ("GPL") or the Common
+ * Development and Distribution License("CDDL") (collectively, the
+ * "License"). You may not use this file except in compliance with the
+ * License. You can obtain a copy of the License at
+ * http://www.netbeans.org/cddl-gplv2.html
+ * or nbbuild/licenses/CDDL-GPL-2-CP. See the License for the
+ * specific language governing permissions and limitations under the
+ * License.  When distributing the software, include this License Header
+ * Notice in each file and include the License file at
+ * nbbuild/licenses/CDDL-GPL-2-CP.  Sun designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Sun in the GPL Version 2 section of the License file that
+ * accompanied this code. If applicable, add the following below the
+ * License Header, with the fields enclosed by brackets [] replaced by
+ * your own identifying information:
+ * "Portions Copyrighted [year] [name of copyright owner]"
+ *
+ * Contributor(s): Alexandre Iline.
+ *
+ * The Original Software is the Jemmy library.
+ * The Initial Developer of the Original Software is Alexandre Iline.
+ * All Rights Reserved.
+ *
+ * If you wish your version of this file to be governed by only the CDDL
+ * or only the GPL Version 2, indicate your decision by adding
+ * "[Contributor] elects to include this software in this distribution
+ * under the [CDDL or GPL Version 2] license." If you do not indicate a
+ * single choice of license, a recipient has the option to distribute
+ * your version of this file under either the CDDL, the GPL Version 2 or
+ * to extend the choice of license to its licensees as provided above.
+ * However, if you add GPL Version 2 code and therefore, elected the GPL
+ * Version 2 license, then the option applies only if the new code is
+ * made subject to such option by the copyright holder.
+ *
+ *
+ *
+ * $Id$ $Revision$ $Date$
+ *
  */
 
-public class PNGEncoder {
-        private static final byte[] SIGNATURE = new byte[] { (byte) 137, (byte) 80,
-                        (byte) 78, (byte) 71, (byte) 13, (byte) 10, (byte) 26, (byte) 10 };
+package com.anti.png;
 
-        /**
-         * Generate a PNG data stream from a pixel array.
-         * <p>
-         * Setting processAlpha to false will result in a PNG file that contains no
-         * transparency information, but may be up to 25% smaller.
-         * <p>
-         * The pixel array must contain (width * height) pixels.
-         * 
-         * @param width
-         *            width of image, in pixels
-         * @param height
-         *            height of image, in pixels
-         * @param argb
-         *            pixel array, as populated from Image.getRGB()
-         * @param processAlpha
-         *            true if you want to keep alpha channel data
-         * @return PNG data in a byte[]
-         * @throws IllegalArgumentException
-         *             if the size of the pixel array does not match the specified
-         *             width and height
-         */
-        public static byte[] toPNG(int width, int height, int[] argb,
-                        boolean processAlpha) throws IllegalArgumentException {
-                ByteArrayOutputStream png;
-                try {
-                        byte[] header = createHeaderChunk(width, height, processAlpha);
-                        byte[] data = createDataChunk(width, height, argb, processAlpha);
-                        byte[] trailer = createTrailerChunk();
+import java.awt.AWTException;
+import java.awt.Component;
+import java.awt.Rectangle;
+import java.awt.Robot;
+import java.awt.Toolkit;
 
-                        png = new ByteArrayOutputStream(SIGNATURE.length + header.length
-                                        + data.length + trailer.length);
-                        png.write(SIGNATURE);
-                        png.write(header);
-                        png.write(data);
-                        png.write(trailer);
-                } catch (IOException ioe) {
-                        // none of the code should ever throw an IOException
-                        throw new IllegalStateException("Unexpected " + ioe);
-                }
-                return png.toByteArray();
-        }
+import java.awt.image.BufferedImage;
 
-        /**
-         * Generate a PNG data stream from an Image object.
-         * 
-         * @param img
-         *            source Image
-         * @param processAlpha
-         *            true if you want to keep the alpha channel data
-         * @return PNG data in a byte[]
-         */
-        public static byte[] toPNG(Image img, boolean processAlpha) {
-                int width = img.getWidth();
-                int height = img.getHeight();
-                int[] argb = new int[width * height];
-                img.getRGB(argb, 0, width, 0, 0, width, height);
-                // allow garbage collection, if this is the only reference
-                img = null;
-                return toPNG(width, height, argb, processAlpha);
-        }
+import java.io.BufferedOutputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
 
-        private static byte[] createHeaderChunk(int width, int height,
-                        boolean processAlpha) throws IOException {
-                ByteArrayOutputStream baos = new ByteArrayOutputStream(13);
-                DataOutputStream chunk = new DataOutputStream(baos);
-                chunk.writeInt(width);
-                chunk.writeInt(height);
-                chunk.writeByte(8); // Bitdepth
-                chunk.writeByte(processAlpha ? 6 : 2); // Colortype ARGB or RGB
-                chunk.writeByte(0); // Compression
-                chunk.writeByte(0); // Filter
-                chunk.writeByte(0); // Interlace
-                return toChunk("IHDR", baos.toByteArray());
-        }
+import java.util.zip.CRC32;
+import java.util.zip.Deflater;
+import java.util.zip.DeflaterOutputStream;
+import java.util.zip.Inflater;
 
-        private static byte[] createDataChunk(int width, int height, int[] argb,
-                        boolean processAlpha) throws IOException, IllegalArgumentException {
-                if (argb.length != (width * height)) {
-                        throw new IllegalArgumentException(
-                                        "array size does not match image dimensions");
-                }
-                int source = 0;
-                int dest = 0;
-                byte[] raw = new byte[(processAlpha ? 4 : 3) * (width * height)
-                                + height];
-                for (int y = 0; y < height; y++) {
-                        raw[dest++] = 0; // No filter
-                        for (int x = 0; x < width; x++) {
-                                int pixel = argb[source++];
-                                raw[dest++] = (byte) (pixel >> 16); // red
-                                raw[dest++] = (byte) (pixel >> 8); // green
-                                raw[dest++] = (byte) (pixel); // blue
-                                if (processAlpha) {
-                                        raw[dest++] = (byte) (pixel >> 24); // alpha
-                                }
+/** This class allows to encode BufferedImage into B/W, greyscale or true color PNG
+ * image format with maximum compression.<br>
+ * It also provides complete functionality for capturing full screen, part of
+ * screen or single component, encoding and saving captured image info PNG file.
+ * @author Adam Sotona
+ * @version 1.0 */
+public class PNGEncoder extends Object {
+
+    /** black and white image mode. */    
+    public static final byte BW_MODE = 0;
+    /** grey scale image mode. */    
+    public static final byte GREYSCALE_MODE = 1;
+    /** full color image mode. */    
+    public static final byte COLOR_MODE = 2;
+    
+    public static final byte MY_MODE = 3;
+    
+    OutputStream out;
+    CRC32 crc;
+    byte mode;
+
+    /** public constructor of PNGEncoder class with greyscale mode by default.
+     * @param out output stream for PNG image format to write into
+     */    
+    public PNGEncoder(OutputStream out) {
+        this(out, GREYSCALE_MODE);
+    }
+
+    /** public constructor of PNGEncoder class.
+     * @param out output stream for PNG image format to write into
+     * @param mode BW_MODE, GREYSCALE_MODE or COLOR_MODE
+     */    
+    public PNGEncoder(OutputStream out, byte mode) {
+        crc=new CRC32();
+        this.out = out;
+        if (mode<0 || mode>3)
+            throw new IllegalArgumentException("Unknown color mode");
+        this.mode = mode;
+    }
+
+    //int 转 byte 并写入, 写入后更新crc : 注意写数字直接长度=4，是特地为了写长度和宽度啊。。。
+    void write(int i) throws IOException {
+        byte b[]={(byte)((i>>24)&0xff),(byte)((i>>16)&0xff),(byte)((i>>8)&0xff),(byte)(i&0xff)};
+        write(b);
+    }
+    //写入byte并更新crc
+    void write(byte b[]) throws IOException {
+        out.write(b);
+        crc.update(b);
+    }
+    
+    /** main encoding method (stays blocked till encoding is finished).
+     * @param image BufferedImage to encode
+     * @throws IOException IOException
+     */    
+    public void encode(BufferedImage image) throws IOException {
+        int width = image.getWidth(null);
+        int height = image.getHeight(null);
+        //声明 89 50 4E 47 0D 0A 1A 0A 头文件 00 00 00 0D 文件长度13
+        final byte id[] = {-119, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13};
+        write(id);	//写入头文件
+        crc.reset();
+        write("IHDR".getBytes());	//写入IHDR, 至此，第一行写完
+        write(width);
+        write(height);	//write 宽度高度
+        byte head[]=null;
+        switch (mode) {
+            case BW_MODE: head=new byte[]{1, 0, 0, 0, 0}; break;
+            case GREYSCALE_MODE: head=new byte[]{8, 0, 0, 0, 0}; break;
+            case COLOR_MODE: head=new byte[]{8, 2, 0, 0, 0}; break;
+            case MY_MODE: head=new byte[]{2, 3, 0, 0, 0}; break;
+        }                 
+        write(head);	//写入头文件
+        write((int) crc.getValue());	//写入CRC
+        ByteArrayOutputStream compressed = new ByteArrayOutputStream(65536);
+        BufferedOutputStream bos = new BufferedOutputStream( new DeflaterOutputStream(compressed, new Deflater(9)));	//使用Deflate压缩图像
+        int pixel;
+        int color;
+        int colorset;
+        switch (mode) {
+            case BW_MODE: 
+                int rest=width%8;
+                int bytes=width/8;
+                for (int y=0;y<height;y++) {
+                    bos.write(0);
+                    for (int x=0;x<bytes;x++) {
+                        colorset=0;
+                        for (int sh=0; sh<8; sh++) {
+                            pixel=image.getRGB(x*8+sh,y);
+                            color=((pixel >> 16) & 0xff);
+                            color+=((pixel >> 8) & 0xff);
+                            color+=(pixel & 0xff);
+                            colorset<<=1;
+                            if (color>=3*128)
+                                colorset|=1;
                         }
-                }
-                return toChunk("IDAT", toZLIB(raw));
-        }
-
-        private static byte[] createTrailerChunk() throws IOException {
-                return toChunk("IEND", new byte[] {});
-        }
-
-        private static byte[] toChunk(String id, byte[] raw) throws IOException {
-                ByteArrayOutputStream baos = new ByteArrayOutputStream(raw.length + 12);
-                DataOutputStream chunk = new DataOutputStream(baos);
-
-                chunk.writeInt(raw.length);
-
-                byte[] bid = new byte[4];
-                for (int i = 0; i < 4; i++) {
-                        bid[i] = (byte) id.charAt(i);
-                }
-
-                chunk.write(bid);
-
-                chunk.write(raw);
-
-                int crc = 0xFFFFFFFF;
-                crc = updateCRC(crc, bid);
-                crc = updateCRC(crc, raw);
-                chunk.writeInt(~crc);
-
-                return baos.toByteArray();
-        }
-
-        private static int[] crcTable = null;
-
-        private static void createCRCTable() {
-                crcTable = new int[256];
-
-                for (int i = 0; i < 256; i++) {
-                        int c = i;
-                        for (int k = 0; k < 8; k++) {
-                                c = ((c & 1) > 0) ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+                        bos.write((byte)colorset);
+                    }
+                    if (rest>0) {
+                        colorset=0;
+                        for (int sh=0; sh<width%8; sh++) {
+                            pixel=image.getRGB(bytes*8+sh,y);
+                            color=((pixel >> 16) & 0xff);
+                            color+=((pixel >> 8) & 0xff);
+                            color+=(pixel & 0xff);
+                            colorset<<=1;
+                            if (color>=3*128)
+                                colorset|=1;
                         }
-                        crcTable[i] = c;
+                        colorset<<=8-rest;
+                        bos.write((byte)colorset);
+                    }
                 }
-        }
-
-        private static int updateCRC(int crc, byte[] raw) {
-                if (crcTable == null) {
-                        createCRCTable();
+                break;
+            case GREYSCALE_MODE: 
+                for (int y=0;y<height;y++) {
+                    bos.write(0);
+                    for (int x=0;x<width;x++) {
+                        pixel=image.getRGB(x,y);
+                        color=((pixel >> 16) & 0xff);
+                        color+=((pixel >> 8) & 0xff);
+                        color+=(pixel & 0xff);
+                        bos.write((byte)(color/3));
+                    }
                 }
-
-                for (int i = 0; i < raw.length; i++) {
-                        crc = crcTable[(crc ^ raw[i]) & 0xFF] ^ (crc >>> 8);
+                break;
+             case COLOR_MODE:
+                for (int y=0;y<height;y++) {
+                    bos.write(0);
+                    for (int x=0;x<width;x++) {
+                        pixel=image.getRGB(x,y);
+                        bos.write((byte)((pixel >> 16) & 0xff));
+                        bos.write((byte)((pixel >> 8) & 0xff));
+                        bos.write((byte)(pixel & 0xff));
+                    }
                 }
-
-                return crc;
+                break;
+             case MY_MODE:
+            	 for (int y=0;y<height;y++) {
+                     bos.write(0);
+                     for (int x=0;x<width;x++) {
+                         pixel=image.getRGB(x,y);
+                         bos.write((byte)((pixel >> 16) & 0xff));
+                         bos.write((byte)((pixel >> 8) & 0xff));
+                         bos.write((byte)(pixel & 0xff));
+                     }
+                 }
+            	 break;
         }
+        bos.close();
+        write(compressed.size());
+        crc.reset();
+        write("IDAT".getBytes());
+        write(compressed.toByteArray());
+        write((int) crc.getValue()); 
+        write(0);
+        crc.reset();
+        write("IEND".getBytes());
+        write((int) crc.getValue()); 
+        out.close();
+    }
 
-        /*
-         * This method is called to encode the image data as a zlib block as
-         * required by the PNG specification. This file comes with a minimal ZLIB
-         * encoder which uses uncompressed deflate blocks (fast, short, easy, but no
-         * compression). If you want compression, call another encoder (such as
-         * JZLib?) here.
-         */
-        private static byte[] toZLIB(byte[] raw) throws IOException {
-                return ZLIB.toZLIB(raw);
+    /** Static method performing screen capture into PNG image format file with given fileName.
+     * @param rect Rectangle of screen to be captured
+     * @param fileName file name for screen capture PNG image file */    
+    public static void captureScreen(Rectangle rect, String fileName) {
+        captureScreen(rect, fileName, GREYSCALE_MODE);
+    }
+
+    /** Static method performing screen capture into PNG image format file with given fileName.
+     * @param rect Rectangle of screen to be captured
+     * @param mode image color mode
+     * @param fileName file name for screen capture PNG image file */    
+    public static void captureScreen(Rectangle rect, String fileName, byte mode) {
+        try {
+            BufferedImage capture=new Robot().createScreenCapture(rect);
+            BufferedOutputStream file=new BufferedOutputStream(new FileOutputStream(fileName));
+            PNGEncoder encoder=new PNGEncoder(file, mode);
+            encoder.encode(capture);
+        } catch (AWTException awte) {
+            awte.printStackTrace();
+        } catch (IOException ioe) {
+            ioe.printStackTrace();
         }
-}
+    }
 
-class ZLIB {
-        private static final int BLOCK_SIZE = 32000;
+     /** Static method performing one component screen capture into PNG image format file with given fileName.
+      * @param comp Component to be captured
+      * @param fileName String image target filename */    
+    public static void captureScreen(Component comp, String fileName) {
+        captureScreen(comp, fileName, GREYSCALE_MODE);
+    }
+    
+    /** Static method performing one component screen capture into PNG image format file with given fileName.
+     * @param comp Component to be captured
+     * @param fileName String image target filename
+     * @param mode image color mode */    
+    public static void captureScreen(Component comp, String fileName, byte mode) {
+  captureScreen(new Rectangle(comp.getLocationOnScreen(),
+            comp.getSize()),
+          fileName, mode);
+    }
 
-        public static byte[] toZLIB(byte[] raw) throws IOException {
-                ByteArrayOutputStream baos = new ByteArrayOutputStream(raw.length + 6
-                                + (raw.length / BLOCK_SIZE) * 5);
-                DataOutputStream zlib = new DataOutputStream(baos);
-
-                byte tmp = (byte) 8;
-                zlib.writeByte(tmp); // CM = 8, CMINFO = 0
-                zlib.writeByte((31 - ((tmp << 8) % 31)) % 31); // FCHECK(FDICT/FLEVEL=0)
-
-                int pos = 0;
-                while (raw.length - pos > BLOCK_SIZE) {
-                        writeUncompressedDeflateBlock(zlib, false, raw, pos,
-                                        (char) BLOCK_SIZE);
-                        pos += BLOCK_SIZE;
-                }
-
-                writeUncompressedDeflateBlock(zlib, true, raw, pos,
-                                (char) (raw.length - pos));
-
-                // zlib check sum of uncompressed data
-                zlib.writeInt(calcADLER32(raw));
-
-                return baos.toByteArray();
-        }
-
-        private static void writeUncompressedDeflateBlock(DataOutputStream zlib,
-                        boolean last, byte[] raw, int off, char len) throws IOException {
-                zlib.writeByte((byte) (last ? 1 : 0)); // Final flag, Compression type 0
-                zlib.writeByte((byte) (len & 0xFF)); // Length LSB
-                zlib.writeByte((byte) ((len & 0xFF00) >> 8)); // Length MSB
-                zlib.writeByte((byte) (~len & 0xFF)); // Length 1st complement LSB
-                zlib.writeByte((byte) ((~len & 0xFF00) >> 8)); // Length 1st complement
-                                                                                                                // MSB
-                zlib.write(raw, off, len); // Data
-        }
-
-        private static int calcADLER32(byte[] raw) {
-                int s1 = 1;
-                int s2 = 0;
-                for (int i = 0; i < raw.length; i++) {
-                        int abs = raw[i] >= 0 ? raw[i] : (raw[i] + 256);
-                        s1 = (s1 + abs) % 65521;
-                        s2 = (s2 + s1) % 65521;
-                }
-                return (s2 << 16) + s1;
-        }
+    
+    /** Static method performing whole screen capture into PNG image format file with given fileName.
+     * @param fileName String image target filename */    
+    public static void captureScreen(String fileName) {
+        captureScreen(fileName, GREYSCALE_MODE);
+    }
+    
+    /** Static method performing whole screen capture into PNG image format file with given fileName.
+     * @param fileName String image target filename
+     * @param mode image color mode */    
+    public static void captureScreen(String fileName, byte mode) {
+  captureScreen(new Rectangle(Toolkit.getDefaultToolkit().getScreenSize()), fileName, mode);
+    }
 }
