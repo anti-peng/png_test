@@ -107,6 +107,7 @@ public class PNGEncoder extends Object {
     }
 
     //int 转 byte 并写入, 写入后更新crc : 注意写数字直接长度=4，是特地为了写长度和宽度啊。。。
+    //0xff = 255.   
     void write(int i) throws IOException {
         byte b[]={(byte)((i>>24)&0xff),(byte)((i>>16)&0xff),(byte)((i>>8)&0xff),(byte)(i&0xff)};
         write(b);
@@ -139,7 +140,31 @@ public class PNGEncoder extends Object {
             case MY_MODE: head=new byte[]{2, 3, 0, 0, 0}; break;
         }                 
         write(head);	//写入头文件
-        write((int) crc.getValue());	//写入CRC
+        write((int) crc.getValue());	//写入CRC  头文件和头文件CRC写完
+        
+        
+        //写gAMA块 
+        //00 00 00 04 数据块长度 = 4
+        //67 41 4D 41 gAMA 
+        //00 00 B1 8F gama矫正信息  0.45455 = 45455
+        //0B FC 61 05 CRC值
+        crc.reset();
+        write(4);
+        write("gAMA".getBytes());
+        write(45445);
+        write((int) crc.getValue());
+        
+        //写入PLTE  每个调色板项占用3个字节 R 1byte G 1byte B 1byte
+        //00 00 00 0C 长度12
+        //50 4C 54 45 PLTE
+        //F1 E1 B2 56 3F 2C B6 B2 8B FA F4 D4	 2bit/sample ^ 2 = 4 4色图像, 有4个调色板项，也就是 4 * 3 = 12字节
+        //06 30 C6 1F  CRC
+        crc.reset();
+        write(12);
+        write("PLTE".getBytes());
+//        byte plte[] = {}
+        
+        
         ByteArrayOutputStream compressed = new ByteArrayOutputStream(65536);
         BufferedOutputStream bos = new BufferedOutputStream( new DeflaterOutputStream(compressed, new Deflater(9)));	//使用Deflate压缩图像
         int pixel;

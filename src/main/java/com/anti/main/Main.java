@@ -7,6 +7,7 @@ import java.awt.image.BufferedImage;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.OutputStream;
 
 import javax.imageio.ImageIO;
@@ -24,8 +25,18 @@ public class Main {
 //		PNGEncoder encoder = new PNGEncoder(out, PNGEncoder.MY_MODE);
 //		encoder.encode(bufferedImage);
 		Main m = new Main();
-		m.pngMethod();
+//		m.pngMethod();
+		
+		m.write(-119);
 	}
+	
+	void write(int i) throws IOException {
+        byte b[]={(byte)((i>>24)&0xff),(byte)((i>>16)&0xff),(byte)((i>>8)&0xff),(byte)(i&0xff)};
+        for(byte x : b){
+        	System.out.println(b);
+        }
+    }
+	
 	
 	public void pngMethod() throws Exception{
 		
