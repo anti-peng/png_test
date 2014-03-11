@@ -74,7 +74,7 @@ public class Main {
         Graphics2D g2 = img.createGraphics();
         g2.drawImage(src, 0, 0, null);
         g2.dispose();
-        
+          
         // output
         ImageIO.write(img, "png", new File("/Users/anti/Desktop/test_temp.png"));   // 2,5 kb
         
