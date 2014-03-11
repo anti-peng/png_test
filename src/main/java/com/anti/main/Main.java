@@ -25,6 +25,7 @@ import com.anti.png.PNGEncoder;
 public class Main {
 
 	public static void main(String[] args) throws Exception{
+		//参考pngencoder 同样是bufferedimage  修改一下  不用GRAPHIC 2D
 		
 //		OutputStream out = new FileOutputStream("/Users/Anti/Desktop/test2.png");
 //		BufferedImage bufferedImage = ImageIO.read(new FileInputStream("/Users/Anti/Desktop/cat.png"));
@@ -70,10 +71,10 @@ public class Main {
                 BufferedImage.TYPE_BYTE_INDEXED, // required to work
                 cm); // custom color model (i.e. palette)
         
-        Graphics2D g2 = img.createGraphics();
-        g2.drawImage(src, 0, 0, null);
-        g2.dispose();
-
+//        Graphics2D g2 = img.createGraphics();
+//        g2.drawImage(src, 0, 0, null);
+//        g2.dispose();
+        
         // output
         ImageIO.write(img, "png", new File("/Users/Anti/Desktop/test2.png"));   // 2,5 kb
 		
