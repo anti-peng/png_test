@@ -125,9 +125,13 @@ public class PNGEncoder extends Object {
     public void encode(BufferedImage image) throws IOException {
         int width = image.getWidth(null);
         int height = image.getHeight(null);
+
+        //写入头文件 和 IHDR文件的长度
         //声明 89 50 4E 47 0D 0A 1A 0A 头文件 00 00 00 0D 文件长度13
         final byte id[] = {-119, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13};
-        write(id);	//写入头文件
+        write(id);	
+        
+        //写入IHDR
         crc.reset();
         write("IHDR".getBytes());	//写入IHDR, 至此，第一行写完
         write(width);
@@ -145,11 +149,11 @@ public class PNGEncoder extends Object {
         
         //写gAMA块 
         //00 00 00 04 数据块长度 = 4
+        write(4);
         //67 41 4D 41 gAMA 
         //00 00 B1 8F gama矫正信息  0.45455 = 45455
         //0B FC 61 05 CRC值
         crc.reset();
-        write(4);
         write("gAMA".getBytes());
         write(45445);
         write((int) crc.getValue());
@@ -159,14 +163,16 @@ public class PNGEncoder extends Object {
         //50 4C 54 45 PLTE
         //F1 E1 B2 56 3F 2C B6 B2 8B FA F4 D4	 2bit/sample ^ 2 = 4 4色图像, 有4个调色板项，也就是 4 * 3 = 12字节
         //06 30 C6 1F  CRC
-        crc.reset();
         write(12);
+        crc.reset();
         write("PLTE".getBytes());
-//        byte plte[] = {}
+        byte plte[] = {-15, -31, -78, 86, 63, 44, -74, -78, -117, -6, -12, -44};
+        write(plte);
+        write((int) crc.getValue());
         
-        
-        ByteArrayOutputStream compressed = new ByteArrayOutputStream(65536);
-        BufferedOutputStream bos = new BufferedOutputStream( new DeflaterOutputStream(compressed, new Deflater(9)));	//使用Deflate压缩图像
+        //delta filtering --> LZ77 --> Haffman --> data 压缩过程
+        ByteArrayOutputStream compressed = new ByteArrayOutputStream();
+        BufferedOutputStream bos = new BufferedOutputStream( new DeflaterOutputStream(compressed, new Deflater(6)));	//使用Deflate压缩图像
         int pixel;
         int color;
         int colorset;
@@ -233,24 +239,39 @@ public class PNGEncoder extends Object {
                      bos.write(0);
                      for (int x=0;x<width;x++) {
                          pixel=image.getRGB(x,y);
-                         bos.write((byte)((pixel >> 16) & 0xff));
-                         bos.write((byte)((pixel >> 8) & 0xff));
-                         bos.write((byte)(pixel & 0xff));
+                         bos.write(pixel);
+//                         bos.write((byte)((pixel >> 16) & 0xff));
+//                         bos.write((byte)((pixel >> 8) & 0xff));
+//                         bos.write((byte)(pixel & 0xff));
                      }
                  }
-            	 break;
+                 break;
+//                 从一个32位int型数据cARGB中读取图像RGB颜色值的代码如下：
+//                 int alpha = (cARGB >> 24)& 0xff; //透明度通道  
+//                 int red = (cARGB >> 16) &0xff;  
+//                 int green = (cARGB >> 8) &0xff;  
+//                 int blue = cARGB & 0xff;  
         }
         bos.close();
+        
+        //写入压缩后的数据长度
         write(compressed.size());
+      
         crc.reset();
         write("IDAT".getBytes());
         write(compressed.toByteArray());
-        write((int) crc.getValue()); 
+        write((int) crc.getValue());
+        
+        //写入IEND
         write(0);
         crc.reset();
         write("IEND".getBytes());
         write((int) crc.getValue()); 
         out.close();
+    }
+    
+    private void replaceColor(byte[] data, int[] para, int oldColor, int newColor){
+    	byte rr = (byte)((oldColor >> 16) & 0xff);	//十进制颜色转十六进制
     }
 
     /** Static method performing screen capture into PNG image format file with given fileName.
