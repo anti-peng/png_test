@@ -48,7 +48,7 @@ public class Main {
 //		System.out.println(bufferedImage.getType());
 		
 		//////////////////////////////////////////////////////////////////////////////////////
-		BufferedImage src = ImageIO.read(new File("/Users/Anti/Desktop/palette_test.png")); // 71 kb
+		BufferedImage src = ImageIO.read(new File("/Users/anti/Desktop/original_1.png")); // 71 kb
 //		BufferedImage src = ImageIO.read(new File("/Users/Anti/Desktop/test2.png")); // 71 kb
 		
 		
@@ -68,17 +68,23 @@ public class Main {
         // draw source image on new one, with custom palette
         BufferedImage img = new BufferedImage(
                 src.getWidth(), src.getHeight(), // match source
-                BufferedImage.TYPE_BYTE_INDEXED, // required to work
+                BufferedImage.TYPE_BYTE_BINARY, // required to work
                 cm); // custom color model (i.e. palette)
         
-//        Graphics2D g2 = img.createGraphics();
-//        g2.drawImage(src, 0, 0, null);
-//        g2.dispose();
+        Graphics2D g2 = img.createGraphics();
+        g2.drawImage(src, 0, 0, null);
+        g2.dispose();
         
         // output
-        ImageIO.write(img, "png", new File("/Users/Anti/Desktop/test2.png"));   // 2,5 kb
+        ImageIO.write(img, "png", new File("/Users/anti/Desktop/test_temp.png"));   // 2,5 kb
+        
+//        File f = new File("/Users/anti/Desktop/test.png");
+        
 		
 		System.out.println("done");
+		
+//		OutputStream out = new FileOutputStream("/Users/anti/Desktop/test.png");
+		
 		
 //		Main m = new Main();
 //		m.write(-100);
