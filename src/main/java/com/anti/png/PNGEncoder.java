@@ -240,6 +240,7 @@ public class PNGEncoder extends Object {
                      for (int x=0;x<width;x++) {
                          pixel=image.getRGB(x,y);
                          bos.write(pixel);
+                         
 //                         bos.write((byte)((pixel >> 16) & 0xff));
 //                         bos.write((byte)((pixel >> 8) & 0xff));
 //                         bos.write((byte)(pixel & 0xff));

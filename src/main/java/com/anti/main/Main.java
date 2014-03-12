@@ -25,65 +25,60 @@ import com.anti.png.PNGEncoder;
 public class Main {
 
 	public static void main(String[] args) throws Exception{
-		//参考pngencoder 同样是bufferedimage  修改一下  不用GRAPHIC 2D
 		
 //		OutputStream out = new FileOutputStream("/Users/Anti/Desktop/test2.png");
 //		BufferedImage bufferedImage = ImageIO.read(new FileInputStream("/Users/Anti/Desktop/cat.png"));
-//		
 //		PNGEncoder encoder = new PNGEncoder(out, PNGEncoder.MY_MODE);
 //		encoder.encode(bufferedImage);
 		
 		
 //		Main m = new Main();
-//		
 //		m.write(-11124948);
 		
-//		Image img = Toolkit.getDefaultToolkit().getImage("/Users/Anti/Desktop/palette_test.png");
-//		BufferedImage bufferedImage = ImageIO.read(new FileInputStream("/Users/Anti/Desktop/palette_test.png"));
-//		
-//		System.out.println(bufferedImage.getPropertyNames());	//null
-//		
-//		System.out.println(bufferedImage.getColorModel().getPixelSize());
-//		
-//		System.out.println(bufferedImage.getType());
-		
-		//////////////////////////////////////////////////////////////////////////////////////
-		BufferedImage src = ImageIO.read(new File("/Users/anti/Desktop/original_1.png")); // 71 kb
-//		BufferedImage src = ImageIO.read(new File("/Users/Anti/Desktop/test2.png")); // 71 kb
+		/*
+		 * 1. get to know if 0803 model is suitable for mabinogi
+		 * 2. how PLTE and iDAT chunks co-works
+		 */
 		
 		
-//		System.out.println(src.getColorModel().getPixelSize());
-
+		BufferedImage src = ImageIO.read(new File("/Users/Anti/Desktop/src.png")); // 71 kb
+		
         // here goes custom palette
         IndexColorModel cm = new IndexColorModel(
                 2, 4,
                 new byte[]{-16,     86,    -74,	   -6},
                 new byte[]{-31,     63,    -78,    -12},
                 new byte[]{-78,     44,    -117,    -44});
-                //          RED  GREEN1 GREEN2  BLUE  WHITE BLACK              
-//                new byte[]{-100,     0,     0,    0,    -1,     0},
-//                new byte[]{   0,  -100,    60,    0,    -1,     0},
-//                new byte[]{   0,     0,     0, -100,    -1,     0});
-
-        // draw source image on new one, with custom palette
         BufferedImage img = new BufferedImage(
                 src.getWidth(), src.getHeight(), // match source
                 BufferedImage.TYPE_BYTE_BINARY, // required to work
                 cm); // custom color model (i.e. palette)
-        
         Graphics2D g2 = img.createGraphics();
         g2.drawImage(src, 0, 0, null);
-        g2.dispose();
-          
+        g2.dispose();          
         // output
-        ImageIO.write(img, "png", new File("/Users/anti/Desktop/test_temp.png"));   // 2,5 kb
-        
-//        File f = new File("/Users/anti/Desktop/test.png");
-        
-		
+        ImageIO.write(img, "png", new File("/Users/Anti/Desktop/test.png"));   // 2,5 kb        
 		System.out.println("done");
 		
-//		OutputStream out = new FileOutputStream("/Users/anti/Desktop/test.png");
+//		BufferedImage src = ImageIO.read(new File("/Users/Anti/Desktop/cat.png")); // 71 kb
+//		BufferedImage tempImage = new BufferedImage(src.getWidth(), src.getHeight(), BufferedImage.TYPE_BYTE_BINARY);
+//		Graphics2D g2d = (Graphics2D) tempImage.getGraphics();
+//		g2d.drawImage(src, 0, 0, null);
+//		ImageIO.write(tempImage, "png", new File("/Users/Anti/Desktop/test.png"));
+//		System.out.println("done");
+		
+		
+//		Main m = new Main();
+//		
+//		for(int w = 0; w < src.getWidth(); w++){
+//			for(int h = 0; h < src.getHeight(); h ++){
+//				System.out.println("RGB = " + Integer.toHexString(src.getRGB(w, h)));
+////				m.write(src.getRGB(w, h));
+//				if(w == 1)
+//					break;
+//			}
+//		}
+		
 		
 		
 //		Main m = new Main();
@@ -105,7 +100,7 @@ public class Main {
 	     if (hex.length() == 1) { 
 	       hex = '0' + hex; 
 	     } 
-	     System.out.print(hex.toUpperCase() ); 
+	     System.out.println(hex.toUpperCase() ); 
 	   } 
 
 	}
