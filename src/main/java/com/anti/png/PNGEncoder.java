@@ -56,9 +56,11 @@ import java.awt.Toolkit;
 import java.awt.image.BufferedImage;
 
 import java.io.BufferedOutputStream;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.io.OutputStream;
 
 import java.util.zip.CRC32;
@@ -157,6 +159,38 @@ public class PNGEncoder extends Object {
         write("gAMA".getBytes());
         write(45445);
         write((int) crc.getValue());
+        
+        //写入zTxt 1
+        write(26);
+        crc.reset();
+        write("zTXt".getBytes());
+        write("authid".getBytes());
+        write(0);	//separator
+        write(0); 	//compression method: 0
+        String authid = "-375512830";
+        byte[] ori = authid.getBytes();
+        ByteArrayInputStream inb = new ByteArrayInputStream(ori, 0, ori.length);
+        InputStream in = 
+        
+//        public final static byte[] compressBytes(byte[] ori, boolean compress) {
+//    		return compressBytes(ori, 0, ori.length, compress);
+//    	}
+//
+//    	public static byte[] compressBytes(byte[] ori, int offset, int len, boolean compress) {
+//    		try {
+//    			ByteArrayInputStream inb = new ByteArrayInputStream(ori, offset, len);
+//    			InputStream in = compress ? inb : new InflaterInputStream(inb);
+//    			ByteArrayOutputStream outb = new ByteArrayOutputStream();
+//    			OutputStream out = compress ? new DeflaterOutputStream(outb) : outb;
+//    			shovelInToOut(in, out);
+//    			in.close();
+//    			out.close();
+//    			return outb.toByteArray();
+//    		} catch (Exception e) {
+//    			throw new PngjException(e);
+//    		}
+//    	}
+        
         
         //写入PLTE  每个调色板项占用3个字节 R 1byte G 1byte B 1byte
         //00 00 00 0C 长度12
