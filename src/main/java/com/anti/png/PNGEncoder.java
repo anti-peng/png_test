@@ -68,6 +68,9 @@ import java.util.zip.Deflater;
 import java.util.zip.DeflaterOutputStream;
 import java.util.zip.Inflater;
 
+import ar.com.hjg.pngj.PngHelperInternal;
+import ar.com.hjg.pngj.chunks.ChunkHelper;
+
 /** This class allows to encode BufferedImage into B/W, greyscale or true color PNG
  * image format with maximum compression.<br>
  * It also provides complete functionality for capturing full screen, part of
@@ -161,36 +164,51 @@ public class PNGEncoder extends Object {
         write((int) crc.getValue());
         
         //写入zTxt 1
-        write(26);
+        String authid = "-375512830";
+        byte[] idbytes = ChunkHelper.compressBytes(authid.getBytes(PngHelperInternal.charsetLatin1), true);
+        int idlength = "authid".length() + idbytes.length + 2;
+        write(idlength);
         crc.reset();
         write("zTXt".getBytes());
         write("authid".getBytes());
         write(0);	//separator
         write(0); 	//compression method: 0
-        String authid = "-375512830";
-        byte[] ori = authid.getBytes();
-        ByteArrayInputStream inb = new ByteArrayInputStream(ori, 0, ori.length);
-        InputStream in = 
-        
-//        public final static byte[] compressBytes(byte[] ori, boolean compress) {
-//    		return compressBytes(ori, 0, ori.length, compress);
-//    	}
-//
-//    	public static byte[] compressBytes(byte[] ori, int offset, int len, boolean compress) {
-//    		try {
-//    			ByteArrayInputStream inb = new ByteArrayInputStream(ori, offset, len);
-//    			InputStream in = compress ? inb : new InflaterInputStream(inb);
-//    			ByteArrayOutputStream outb = new ByteArrayOutputStream();
-//    			OutputStream out = compress ? new DeflaterOutputStream(outb) : outb;
-//    			shovelInToOut(in, out);
-//    			in.close();
-//    			out.close();
-//    			return outb.toByteArray();
-//    		} catch (Exception e) {
-//    			throw new PngjException(e);
-//    		}
-//    	}
-        
+        write(idbytes);
+        write((int) crc.getValue());
+
+        //写入zTxt 2
+        String authorStr = "希尔瓦娜斯";
+        byte[] authorbytes = ChunkHelper.compressBytes(authorStr.getBytes(PngHelperInternal.charsetLatin1), true);
+        int aulength = "author".length() + authorbytes.length + 2;
+        write(aulength);
+        crc.reset();
+        write("zTxt".getBytes());
+        write("author".getBytes());
+        write(0);
+        write(0);
+        write(authorbytes);
+        write((int) crc.getValue());
+//			example        
+//        @Override
+//        public ChunkRaw createRawChunk() {
+//                if (val.isEmpty() || key.isEmpty())
+//                        return null;
+//                try {
+//                        ByteArrayOutputStream ba = new ByteArrayOutputStream();
+//                        ba.write(key.getBytes(PngHelperInternal.charsetLatin1));
+//                        ba.write(0); // separator
+//                        ba.write(0); // compression method: 0
+//                        byte[] textbytes = ChunkHelper.compressBytes(val.getBytes(PngHelperInternal.charsetLatin1), true);
+//                        ba.write(textbytes);
+//                        byte[] b = ba.toByteArray();
+//                        ChunkRaw chunk = createEmptyChunk(b.length, false);
+//                        chunk.data = b;
+//                        return chunk;
+//                } catch (IOException e) {
+//                        throw new PngjException(e);
+//                }
+//        }
+
         
         //写入PLTE  每个调色板项占用3个字节 R 1byte G 1byte B 1byte
         //00 00 00 0C 长度12
@@ -203,6 +221,8 @@ public class PNGEncoder extends Object {
         byte plte[] = {-15, -31, -78, 86, 63, 44, -74, -78, -117, -6, -12, -44};
         write(plte);
         write((int) crc.getValue());
+        
+        
         
         //delta filtering --> LZ77 --> Haffman --> data 压缩过程
         ByteArrayOutputStream compressed = new ByteArrayOutputStream();
@@ -274,18 +294,9 @@ public class PNGEncoder extends Object {
                      for (int x=0;x<width;x++) {
                          pixel=image.getRGB(x,y);
                          bos.write(pixel);
-                         
-//                         bos.write((byte)((pixel >> 16) & 0xff));
-//                         bos.write((byte)((pixel >> 8) & 0xff));
-//                         bos.write((byte)(pixel & 0xff));
                      }
                  }
                  break;
-//                 从一个32位int型数据cARGB中读取图像RGB颜色值的代码如下：
-//                 int alpha = (cARGB >> 24)& 0xff; //透明度通道  
-//                 int red = (cARGB >> 16) &0xff;  
-//                 int green = (cARGB >> 8) &0xff;  
-//                 int blue = cARGB & 0xff;  
         }
         bos.close();
         

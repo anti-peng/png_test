@@ -41,7 +41,7 @@ public class Main {
 		 */
 		
 		
-		BufferedImage src = ImageIO.read(new File("/Users/Anti/Desktop/src.png")); // 71 kb
+		BufferedImage src = ImageIO.read(new File("/Users/Anti/Desktop/src2.png")); // 71 kb
 		
         // here goes custom palette
         IndexColorModel cm = new IndexColorModel(
@@ -58,7 +58,14 @@ public class Main {
         g2.dispose();          
         // output
         ImageIO.write(img, "png", new File("/Users/Anti/Desktop/test.png"));   // 2,5 kb        
-		System.out.println("done");
+		System.out.println("done 1");
+		
+        BufferedImage bufferedImage = ImageIO.read(new FileInputStream("/Users/Anti/Desktop/test.png"));
+        OutputStream out = new FileOutputStream("/Users/Anti/Desktop/test2.png");
+        PNGEncoder encoder = new PNGEncoder(out, PNGEncoder.MY_MODE);
+        encoder.encode(bufferedImage);
+        out.close();
+        System.out.println("done 2");
 		
 //		BufferedImage src = ImageIO.read(new File("/Users/Anti/Desktop/cat.png")); // 71 kb
 //		BufferedImage tempImage = new BufferedImage(src.getWidth(), src.getHeight(), BufferedImage.TYPE_BYTE_BINARY);
