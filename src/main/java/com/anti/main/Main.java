@@ -4,20 +4,20 @@ import java.awt.Image;
 import java.awt.PageAttributes.ColorType;
 import java.awt.Toolkit;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.awt.image.ColorModel;
 import java.awt.image.IndexColorModel;
 import java.io.File;
 import java.io.IOException;
-import javax.imageio.ImageIO;
 
+import javax.imageio.ImageIO;
 import javax.imageio.ImageIO;
 
 import com.anti.png.PNGEncoder;
@@ -32,17 +32,8 @@ public class Main {
 //		encoder.encode(bufferedImage);
 		
 		
-//		Main m = new Main();
-//		m.write(-11124948);
-		
-		/*
-		 * 1. get to know if 0803 model is suitable for mabinogi
-		 * 2. how PLTE and iDAT chunks co-works
-		 */
-		
-		
-		BufferedImage src = ImageIO.read(new File("/Users/Anti/Desktop/src2.png")); // 71 kb
-		
+//		BufferedImage src = ImageIO.read(new File("/Users/Anti/Desktop/src2.png")); // 71 kb
+		BufferedImage src = ImageIO.read(new File("C:\\Users\\Anti\\Desktop\\sample.png")); // 71 kb
         // here goes custom palette
         IndexColorModel cm = new IndexColorModel(
                 2, 4,
@@ -57,42 +48,64 @@ public class Main {
         g2.drawImage(src, 0, 0, null);
         g2.dispose();          
         // output
-        ImageIO.write(img, "png", new File("/Users/Anti/Desktop/test.png"));   // 2,5 kb        
+        ImageIO.write(img, "png", new File("C:\\Users\\Anti\\Desktop\\test.png"));   // 2,5 kb
+        
 		System.out.println("done 1");
 		
-        BufferedImage bufferedImage = ImageIO.read(new FileInputStream("/Users/Anti/Desktop/test.png"));
-        OutputStream out = new FileOutputStream("/Users/Anti/Desktop/test2.png");
-        PNGEncoder encoder = new PNGEncoder(out, PNGEncoder.MY_MODE);
-        encoder.encode(bufferedImage);
-        out.close();
-        System.out.println("done 2");
+//        BufferedImage bufferedImage = ImageIO.read(new FileInputStream("/Users/Anti/Desktop/test.png"));
+//        OutputStream out = new FileOutputStream("/Users/Anti/Desktop/test2.png");
+//        PNGEncoder encoder = new PNGEncoder(out, PNGEncoder.MY_MODE);
+//        encoder.encode(bufferedImage);
+//        out.close();
+//        System.out.println("done 2");
 		
-//		BufferedImage src = ImageIO.read(new File("/Users/Anti/Desktop/cat.png")); // 71 kb
-//		BufferedImage tempImage = new BufferedImage(src.getWidth(), src.getHeight(), BufferedImage.TYPE_BYTE_BINARY);
-//		Graphics2D g2d = (Graphics2D) tempImage.getGraphics();
-//		g2d.drawImage(src, 0, 0, null);
-//		ImageIO.write(tempImage, "png", new File("/Users/Anti/Desktop/test.png"));
-//		System.out.println("done");
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+		ImageIO.write(img, "png", out);   // 2,5 kb
+		byte[] alldata = out.toByteArray();
 		
-		
-//		Main m = new Main();
-//		
-//		for(int w = 0; w < src.getWidth(); w++){
-//			for(int h = 0; h < src.getHeight(); h ++){
-//				System.out.println("RGB = " + Integer.toHexString(src.getRGB(w, h)));
-////				m.write(src.getRGB(w, h));
-//				if(w == 1)
-//					break;
-//			}
-//		}
-		
-		
-		
-//		Main m = new Main();
-//		m.write(-100);
-//		System.out.println(-15 & 0xff);
+		Main m = new Main();
+		m.analyze(alldata);
 		
 	}
+	
+	private void analyze(byte[] data) {
+        int offset = 8;
+        int chunkLen = 0;
+        while(true){
+        	if(data[offset + 4] == 0x49 && data[offset + 5] == 0x44
+                    && data[offset + 6] == 0x41 && data[offset + 7] == 0x54){
+        		byte[] x = new byte[]{data[offset+4], data[offset+5], data[offset+6], data[offset+7]};
+        		chunkLen = readInt(data, offset);
+        		
+        		System.out.println(chunkLen);	//1234_IDAT_DATA_CRC_ 这是data的长度
+        		System.out.println("offset=" + offset);		//这个是1234之前的数据块长度，实际长度从 58 - 58+4+4+chunkLen+4  
+        		//for(58 ~ 58+4+4+chunkLen+4) --> write(byte[i])  --> 无损写入原数据
+        		printHexString(x);
+        		break;
+        	}else{
+        		chunkLen = readInt(data, offset);
+        		offset += (4 + 4 + chunkLen + 4);
+        	}
+        }
+//        para[2] = chunkLen / 3;
+//        para[0] = offset + 8;
+//        para[1] = offset + 8 + chunkLen;
+    }
+//	private void analyze(byte[] data){
+//    	int offset = 0;
+//    	int chunkLen = 0;
+//    	 while (data[offset + 1] == 0x49 && data[offset + 2] == 0x44
+//    			 && data[offset + 3] == 0x41 && data[offset + 4] == 0x54) {
+//              chunkLen = readInt(data, offset);
+//              System.out.println(chunkLen);
+//              offset += 4;
+//          }
+//    }
+    private int readInt(byte[] data, int offset) {
+        return ((data[offset] & 0xFF) << 24)
+                | ((data[offset + 1] & 0xFF) << 16)
+                | ((data[offset + 2] & 0xFF) << 8) | (data[offset + 3] & 0xFF);
+    }
 	
 	
 	
@@ -112,29 +125,5 @@ public class Main {
 
 	}
 	
-	public void pngMethod() throws Exception{
-		
-		//source image
-//		Toolkit tk = Toolkit.getDefaultToolkit();
-//		Image img = tk.getImage("/Users/Anti/Desktop/test.png");
-		
-		//create encoder once
-		//width 	44
-		//height	42
-		//Bit Depth	2
-		//ColorType	3
-		//compress	0
-		//filter	0
-		//interlace	0
-//		PngEncoder encoder = new PngEncoder(PngEncoder.COLOR_TRUECOLOR, PngEncoder.DEFAULT_COMPRESSION);
-//		encoder.setIndexedColorMode(3);
-//		
-//		OutputStream out = new FileOutputStream("/Users/Anti/Desktop/test2.png");
-//		
-//		encoder.encode(img, out);
-		
-		//palette length:12, 4 entries
-		
-	}
-	
+
 }

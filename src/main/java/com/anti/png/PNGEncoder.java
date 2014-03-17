@@ -316,6 +316,21 @@ public class PNGEncoder extends Object {
         out.close();
     }
     
+    private void analyze(byte[] data, int[] para){
+    	int offset = 8;
+    	int chunkLen = 0;
+    	 while (data[offset + 4] != 0x49 || data[offset + 5] != 0x44
+                 || data[offset + 6] != 0x41 || data[offset + 7] != 0x54) {
+              chunkLen = readInt(data, offset);
+              offset += (4 + 4 + chunkLen + 4);
+          }
+    }
+    private int readInt(byte[] data, int offset) {
+        return ((data[offset] & 0xFF) << 24)
+                | ((data[offset + 1] & 0xFF) << 16)
+                | ((data[offset + 2] & 0xFF) << 8) | (data[offset + 3] & 0xFF);
+    }
+    
     private void replaceColor(byte[] data, int[] para, int oldColor, int newColor){
     	byte rr = (byte)((oldColor >> 16) & 0xff);	//十进制颜色转十六进制
     }
