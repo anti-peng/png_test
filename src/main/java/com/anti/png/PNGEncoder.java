@@ -150,32 +150,42 @@ public class PNGEncoder extends Object {
         write(45445);
         write((int) crc.getValue());
         
-        //写入zTxt 1
+        //写入zTXt 1
         String authid = "-375512830";
         ByteArrayOutputStream t1 = new ByteArrayOutputStream();
-        BufferedOutputStream bos1 = new BufferedOutputStream(new DeflaterOutputStream(t1, new Deflater(2)));
-        bos1.write(authid.getBytes(PngHelperInternal.charsetLatin1));
+        BufferedOutputStream bos1 = new BufferedOutputStream(new DeflaterOutputStream(t1));
+        bos1.write(authid.getBytes("iso-8859-1"));
         bos1.close();
-        write(t1.size() + 8);
+        //写入length
+        int len1 = t1.size() + 8;
+        write(len1);
         crc.reset();
-        write("zTxt".getBytes());
+        write("zTXt".getBytes());
         write("authid".getBytes());
         write(0);
         write(0);
         write(t1.toByteArray());
+        System.out.println(t1);
         write((int) crc.getValue());
         
         System.out.println("t1 = " + t1.size());
 
-//        //写入zTxt 2
+        //写入zTxt 2
 //        String authorStr = "希尔瓦娜斯";
+////        authorStr = new String(authorStr.getBytes("GBK"));
 //        ByteArrayOutputStream t2 = new ByteArrayOutputStream();
-//        BufferedOutputStream bos2 = new BufferedOutputStream(new DeflaterOutputStream(t2, new Deflater(1)));
-//        bos2.write(authorStr.getBytes(PngHelperInternal.charsetLatin1));
+//        BufferedOutputStream bos2 = new BufferedOutputStream(new DeflaterOutputStream(t2));
+//        bos2.write(authorStr.getBytes("ISO-8859-1"));
+//        
+////        ByteArrayOutputStream t2 = new ByteArrayOutputStream();
+////        DeflaterOutputStream o2 = new DeflaterOutputStream(t2);
+////        o2.write(authorStr.getBytes("ISO-8859-1"));
+////        o2.close();
+//        
 //        bos2.close();
-//        write(t2.size());
+//        write(t2.size() + 8);
 //        crc.reset();
-//        write("zTxt".getBytes());
+//        write("zTXt".getBytes());
 //        write("author".getBytes());
 //        write(0);
 //        write(0);
@@ -224,7 +234,6 @@ public class PNGEncoder extends Object {
         while(true){
         	if(originalData[offset + 4] == 0x49 && originalData[offset + 5] == 0x44
                     && originalData[offset + 6] == 0x41 && originalData[offset + 7] == 0x54){
-        		byte[] x = new byte[]{originalData[offset+4], originalData[offset+5], originalData[offset+6], originalData[offset+7]};
         		chunkLen = readInt(originalData, offset);
         		System.out.println(chunkLen);	//1234_IDAT_DATA_CRC_ 这是data的长度
         		System.out.println("offset=" + offset);		//这个是1234之前的数据块长度，实际长度从 58 - 58+4+4+chunkLen+4  
@@ -237,10 +246,10 @@ public class PNGEncoder extends Object {
         }
         byte[] xx = new byte[chunkLen+12];
         for(int i = offset; i <= (offset+11+chunkLen); i++){
-//        	writeX(originalData[i]);
         	xx[i-offset] = originalData[i];
         }
         writeX(xx);
+        
         //写入IEND
         write(0);
         crc.reset();
