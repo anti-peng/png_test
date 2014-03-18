@@ -48,11 +48,13 @@
 package com.anti.png;
 
 import java.awt.image.BufferedImage;
-
+import java.io.BufferedOutputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-
 import java.util.zip.CRC32;
+import java.util.zip.Deflater;
+import java.util.zip.DeflaterOutputStream;
 
 import ar.com.hjg.pngj.PngHelperInternal;
 import ar.com.hjg.pngj.chunks.ChunkHelper;
@@ -150,29 +152,38 @@ public class PNGEncoder extends Object {
         
         //写入zTxt 1
         String authid = "-375512830";
-        byte[] idbytes = ChunkHelper.compressBytes(authid.getBytes(PngHelperInternal.charsetLatin1), true);
-        int idlength = "authid".length() + idbytes.length + 2;
-        write(idlength);
-        crc.reset();
-        write("zTXt".getBytes());
-        write("authid".getBytes());
-        write(0);	//separator
-        write(0); 	//compression method: 0
-        write(idbytes);
-        write((int) crc.getValue());
-
-        //写入zTxt 2
-        String authorStr = "希尔瓦娜斯";
-        byte[] authorbytes = ChunkHelper.compressBytes(authorStr.getBytes(PngHelperInternal.charsetLatin1), true);
-        int aulength = "author".length() + authorbytes.length + 2;
-        write(aulength);
+        ByteArrayOutputStream t1 = new ByteArrayOutputStream();
+        BufferedOutputStream bos1 = new BufferedOutputStream(new DeflaterOutputStream(t1, new Deflater(2)));
+        bos1.write(authid.getBytes(PngHelperInternal.charsetLatin1));
+        bos1.close();
+        write(t1.size() + 8);
         crc.reset();
         write("zTxt".getBytes());
-        write("author".getBytes());
+        write("authid".getBytes());
         write(0);
         write(0);
-        write(authorbytes);
+        write(t1.toByteArray());
         write((int) crc.getValue());
+        
+        System.out.println("t1 = " + t1.size());
+
+//        //写入zTxt 2
+//        String authorStr = "希尔瓦娜斯";
+//        ByteArrayOutputStream t2 = new ByteArrayOutputStream();
+//        BufferedOutputStream bos2 = new BufferedOutputStream(new DeflaterOutputStream(t2, new Deflater(1)));
+//        bos2.write(authorStr.getBytes(PngHelperInternal.charsetLatin1));
+//        bos2.close();
+//        write(t2.size());
+//        crc.reset();
+//        write("zTxt".getBytes());
+//        write("author".getBytes());
+//        write(0);
+//        write(0);
+//        write(t2.toByteArray());
+//        write((int) crc.getValue());
+//        
+//        System.out.println("zTxt length = " + t2.size());
+        
 //			example        
 //        @Override
 //        public ChunkRaw createRawChunk() {

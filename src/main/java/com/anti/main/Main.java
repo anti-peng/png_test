@@ -28,8 +28,8 @@ public class Main {
 		
 		//compress text field failed.
 		
-		BufferedImage src = ImageIO.read(new File("/Users/Anti/Desktop/src2.png")); // 71 kb
-//		BufferedImage src = ImageIO.read(new File("C:\\Users\\Anti\\Desktop\\sample.png")); // 71 kb
+//		BufferedImage src = ImageIO.read(new File("/Users/Anti/Desktop/src2.png")); // 71 kb
+		BufferedImage src = ImageIO.read(new File("C:\\Users\\Anti\\Desktop\\src2.png")); // 71 kb
         // here goes custom palette
         IndexColorModel cm = new IndexColorModel(
                 2, 4,
@@ -45,7 +45,7 @@ public class Main {
         g2.dispose();          
         // output
         //FOR development only, when online, # this line
-        ImageIO.write(img, "png", new File("/Users/Anti/Desktop/tt.png"));   // 2,5 kb
+//        ImageIO.write(img, "png", new File("/Users/Anti/Desktop/tt.png"));   // 2,5 kb
         
 		System.out.println("done image transform.");
 		
@@ -60,7 +60,8 @@ public class Main {
 		ImageIO.write(img, "png", out);   
 		byte[] originalData = out.toByteArray();
 		
-		OutputStream os = new FileOutputStream("/Users/Anti/Desktop/test.png");
+//		OutputStream os = new FileOutputStream("/Users/Anti/Desktop/test.png");
+		OutputStream os = new FileOutputStream("C:\\Users\\Anti\\Desktop\\test.png");
 		
 		PNGEncoder encoder = new PNGEncoder(os, PNGEncoder.MY_MODE, originalData);
 		encoder.encode(img);
