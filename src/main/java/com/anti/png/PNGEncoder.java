@@ -47,26 +47,12 @@
 
 package com.anti.png;
 
-import java.awt.AWTException;
-import java.awt.Component;
-import java.awt.Rectangle;
-import java.awt.Robot;
-import java.awt.Toolkit;
-
 import java.awt.image.BufferedImage;
 
-import java.io.BufferedOutputStream;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.FileOutputStream;
-import java.io.InputStream;
 import java.io.OutputStream;
 
 import java.util.zip.CRC32;
-import java.util.zip.Deflater;
-import java.util.zip.DeflaterOutputStream;
-import java.util.zip.Inflater;
 
 import ar.com.hjg.pngj.PngHelperInternal;
 import ar.com.hjg.pngj.chunks.ChunkHelper;
@@ -91,24 +77,19 @@ public class PNGEncoder extends Object {
     OutputStream out;
     CRC32 crc;
     byte mode;
-
-    /** public constructor of PNGEncoder class with greyscale mode by default.
-     * @param out output stream for PNG image format to write into
-     */    
-    public PNGEncoder(OutputStream out) {
-        this(out, GREYSCALE_MODE);
-    }
+    byte[] originalData;
 
     /** public constructor of PNGEncoder class.
      * @param out output stream for PNG image format to write into
      * @param mode BW_MODE, GREYSCALE_MODE or COLOR_MODE
      */    
-    public PNGEncoder(OutputStream out, byte mode) {
+    public PNGEncoder(OutputStream out, byte mode, byte[] originalData) {
         crc=new CRC32();
         this.out = out;
         if (mode<0 || mode>3)
             throw new IllegalArgumentException("Unknown color mode");
         this.mode = mode;
+        this.originalData = originalData;
     }
 
     //int 转 byte 并写入, 写入后更新crc : 注意写数字直接长度=4，是特地为了写长度和宽度啊。。。
@@ -121,6 +102,10 @@ public class PNGEncoder extends Object {
     void write(byte b[]) throws IOException {
         out.write(b);
         crc.update(b);
+    }
+    
+    void writeX(byte b[]) throws IOException {
+        out.write(b);
     }
     
     /** main encoding method (stays blocked till encoding is finished).
@@ -218,96 +203,33 @@ public class PNGEncoder extends Object {
         write(12);
         crc.reset();
         write("PLTE".getBytes());
-        byte plte[] = {-15, -31, -78, 86, 63, 44, -74, -78, -117, -6, -12, -44};
+        byte plte[] = {-16, -31, -78, 86, 63, 44, -74, -78, -117, -6, -12, -44};
         write(plte);
         write((int) crc.getValue());
         
-        
-        
-        //delta filtering --> LZ77 --> Haffman --> data 压缩过程
-        ByteArrayOutputStream compressed = new ByteArrayOutputStream();
-        BufferedOutputStream bos = new BufferedOutputStream( new DeflaterOutputStream(compressed, new Deflater(6)));	//使用Deflate压缩图像
-        int pixel;
-        int color;
-        int colorset;
-        switch (mode) {
-            case BW_MODE: 
-                int rest=width%8;
-                int bytes=width/8;
-                for (int y=0;y<height;y++) {
-                    bos.write(0);
-                    for (int x=0;x<bytes;x++) {
-                        colorset=0;
-                        for (int sh=0; sh<8; sh++) {
-                            pixel=image.getRGB(x*8+sh,y);
-                            color=((pixel >> 16) & 0xff);
-                            color+=((pixel >> 8) & 0xff);
-                            color+=(pixel & 0xff);
-                            colorset<<=1;
-                            if (color>=3*128)
-                                colorset|=1;
-                        }
-                        bos.write((byte)colorset);
-                    }
-                    if (rest>0) {
-                        colorset=0;
-                        for (int sh=0; sh<width%8; sh++) {
-                            pixel=image.getRGB(bytes*8+sh,y);
-                            color=((pixel >> 16) & 0xff);
-                            color+=((pixel >> 8) & 0xff);
-                            color+=(pixel & 0xff);
-                            colorset<<=1;
-                            if (color>=3*128)
-                                colorset|=1;
-                        }
-                        colorset<<=8-rest;
-                        bos.write((byte)colorset);
-                    }
-                }
-                break;
-            case GREYSCALE_MODE: 
-                for (int y=0;y<height;y++) {
-                    bos.write(0);
-                    for (int x=0;x<width;x++) {
-                        pixel=image.getRGB(x,y);
-                        color=((pixel >> 16) & 0xff);
-                        color+=((pixel >> 8) & 0xff);
-                        color+=(pixel & 0xff);
-                        bos.write((byte)(color/3));
-                    }
-                }
-                break;
-             case COLOR_MODE:
-                for (int y=0;y<height;y++) {
-                    bos.write(0);
-                    for (int x=0;x<width;x++) {
-                        pixel=image.getRGB(x,y);
-                        bos.write((byte)((pixel >> 16) & 0xff));
-                        bos.write((byte)((pixel >> 8) & 0xff));
-                        bos.write((byte)(pixel & 0xff));
-                    }
-                }
-                break;
-             case MY_MODE:
-            	 for (int y=0;y<height;y++) {
-                     bos.write(0);
-                     for (int x=0;x<width;x++) {
-                         pixel=image.getRGB(x,y);
-                         bos.write(pixel);
-                     }
-                 }
-                 break;
+        //写入IDAT
+        int offset = 8;
+        int chunkLen = 0;
+        while(true){
+        	if(originalData[offset + 4] == 0x49 && originalData[offset + 5] == 0x44
+                    && originalData[offset + 6] == 0x41 && originalData[offset + 7] == 0x54){
+        		byte[] x = new byte[]{originalData[offset+4], originalData[offset+5], originalData[offset+6], originalData[offset+7]};
+        		chunkLen = readInt(originalData, offset);
+        		System.out.println(chunkLen);	//1234_IDAT_DATA_CRC_ 这是data的长度
+        		System.out.println("offset=" + offset);		//这个是1234之前的数据块长度，实际长度从 58 - 58+4+4+chunkLen+4  
+        		//for(58 ~ 58+4+4+chunkLen+4) --> write(byte[i])  --> 无损写入原数据
+        		break;
+        	}else{
+        		chunkLen = readInt(originalData, offset);
+        		offset += (4 + 4 + chunkLen + 4);
+        	}
         }
-        bos.close();
-        
-        //写入压缩后的数据长度
-        write(compressed.size());
-      
-        crc.reset();
-        write("IDAT".getBytes());
-        write(compressed.toByteArray());
-        write((int) crc.getValue());
-        
+        byte[] xx = new byte[chunkLen+12];
+        for(int i = offset; i <= (offset+11+chunkLen); i++){
+//        	writeX(originalData[i]);
+        	xx[i-offset] = originalData[i];
+        }
+        writeX(xx);
         //写入IEND
         write(0);
         crc.reset();
@@ -316,77 +238,9 @@ public class PNGEncoder extends Object {
         out.close();
     }
     
-    private void analyze(byte[] data, int[] para){
-    	int offset = 8;
-    	int chunkLen = 0;
-    	 while (data[offset + 4] != 0x49 || data[offset + 5] != 0x44
-                 || data[offset + 6] != 0x41 || data[offset + 7] != 0x54) {
-              chunkLen = readInt(data, offset);
-              offset += (4 + 4 + chunkLen + 4);
-          }
-    }
     private int readInt(byte[] data, int offset) {
         return ((data[offset] & 0xFF) << 24)
                 | ((data[offset + 1] & 0xFF) << 16)
                 | ((data[offset + 2] & 0xFF) << 8) | (data[offset + 3] & 0xFF);
-    }
-    
-    private void replaceColor(byte[] data, int[] para, int oldColor, int newColor){
-    	byte rr = (byte)((oldColor >> 16) & 0xff);	//十进制颜色转十六进制
-    }
-
-    /** Static method performing screen capture into PNG image format file with given fileName.
-     * @param rect Rectangle of screen to be captured
-     * @param fileName file name for screen capture PNG image file */    
-    public static void captureScreen(Rectangle rect, String fileName) {
-        captureScreen(rect, fileName, GREYSCALE_MODE);
-    }
-
-    /** Static method performing screen capture into PNG image format file with given fileName.
-     * @param rect Rectangle of screen to be captured
-     * @param mode image color mode
-     * @param fileName file name for screen capture PNG image file */    
-    public static void captureScreen(Rectangle rect, String fileName, byte mode) {
-        try {
-            BufferedImage capture=new Robot().createScreenCapture(rect);
-            BufferedOutputStream file=new BufferedOutputStream(new FileOutputStream(fileName));
-            PNGEncoder encoder=new PNGEncoder(file, mode);
-            encoder.encode(capture);
-        } catch (AWTException awte) {
-            awte.printStackTrace();
-        } catch (IOException ioe) {
-            ioe.printStackTrace();
-        }
-    }
-
-     /** Static method performing one component screen capture into PNG image format file with given fileName.
-      * @param comp Component to be captured
-      * @param fileName String image target filename */    
-    public static void captureScreen(Component comp, String fileName) {
-        captureScreen(comp, fileName, GREYSCALE_MODE);
-    }
-    
-    /** Static method performing one component screen capture into PNG image format file with given fileName.
-     * @param comp Component to be captured
-     * @param fileName String image target filename
-     * @param mode image color mode */    
-    public static void captureScreen(Component comp, String fileName, byte mode) {
-  captureScreen(new Rectangle(comp.getLocationOnScreen(),
-            comp.getSize()),
-          fileName, mode);
-    }
-
-    
-    /** Static method performing whole screen capture into PNG image format file with given fileName.
-     * @param fileName String image target filename */    
-    public static void captureScreen(String fileName) {
-        captureScreen(fileName, GREYSCALE_MODE);
-    }
-    
-    /** Static method performing whole screen capture into PNG image format file with given fileName.
-     * @param fileName String image target filename
-     * @param mode image color mode */    
-    public static void captureScreen(String fileName, byte mode) {
-  captureScreen(new Rectangle(Toolkit.getDefaultToolkit().getScreenSize()), fileName, mode);
     }
 }
