@@ -58,6 +58,7 @@ import java.util.zip.DeflaterOutputStream;
 
 import ar.com.hjg.pngj.PngHelperInternal;
 import ar.com.hjg.pngj.chunks.ChunkHelper;
+import ar.com.hjg.pngj.chunks.PngChunkZTXT;
 
 /** This class allows to encode BufferedImage into B/W, greyscale or true color PNG
  * image format with maximum compression.<br>
@@ -151,38 +152,50 @@ public class PNGEncoder extends Object {
         write((int) crc.getValue());
         
         //写入zTXt 1
-        String authid = "-375512830";
-        ByteArrayOutputStream t1 = new ByteArrayOutputStream();
-        BufferedOutputStream bos1 = new BufferedOutputStream(new DeflaterOutputStream(t1));
-        bos1.write(authid.getBytes("iso-8859-1"));
-        bos1.close();
-        //写入length
-        int len1 = t1.size() + 8;
-        write(len1);
-        crc.reset();
-        write("zTXt".getBytes());
-        write("authid".getBytes());
-        write(0);
-        write(0);
-        write(t1.toByteArray());
-        System.out.println(t1);
-        write((int) crc.getValue());
+//        String authid = "-375512830";
+//        ByteArrayOutputStream t1 = new ByteArrayOutputStream();
+//        BufferedOutputStream bos1 = new BufferedOutputStream(new DeflaterOutputStream(t1));
+//        bos1.write(authid.getBytes("iso-8859-1"));
+//        bos1.close();
+//        //写入length
+//        int len1 = t1.size() + 8;
+//        write(len1);
+//        crc.reset();
+//        write("zTXt".getBytes());
+//        write("authid".getBytes());
+//        write(0);
+//        write(0);
+//        write(t1.toByteArray());
+//        System.out.println(t1);
+//        write((int) crc.getValue());
+//        
+//        System.out.println("t1 = " + t1.size());
         
-        System.out.println("t1 = " + t1.size());
+        
+        //static zTXt 1
+        byte[] len1 = new byte[]{0, 0, 0, 26};
+        byte[] chunk1 = new byte[]{122, 84, 88, 116};
+        byte[] key1 = new byte[]{97, 117, 116, 104, 105, 100, 0, 0};
+        byte[] value1 = new byte[]{120, -38, -45, 53, -79, 52, -73, 52, 48, 52, -76, 52, 1, 0, 11, 44, 2, 10, -97, 48, -128, -97};
+        write(len1);
+        write(chunk1);
+        write(key1);
+        write(value1);
 
         //写入zTxt 2
 //        String authorStr = "希尔瓦娜斯";
-////        authorStr = new String(authorStr.getBytes("GBK"));
-//        ByteArrayOutputStream t2 = new ByteArrayOutputStream();
-//        BufferedOutputStream bos2 = new BufferedOutputStream(new DeflaterOutputStream(t2));
-//        bos2.write(authorStr.getBytes("ISO-8859-1"));
-//        
+//////        authorStr = new String(authorStr.getBytes("GBK"));
 ////        ByteArrayOutputStream t2 = new ByteArrayOutputStream();
-////        DeflaterOutputStream o2 = new DeflaterOutputStream(t2);
-////        o2.write(authorStr.getBytes("ISO-8859-1"));
-////        o2.close();
+////        BufferedOutputStream bos2 = new BufferedOutputStream(new DeflaterOutputStream(t2));
+////        bos2.write(authorStr.getBytes("ISO-8859-1"));
+//       
+//        byte[] authorStrbyte = ChunkHelper.toBytesUTF8(authorStr);
+//        ByteArrayOutputStream t2 = new ByteArrayOutputStream();
+//        DeflaterOutputStream o2 = new DeflaterOutputStream(t2);
+//        o2.write(authorStrbyte);
+//        o2.close();
 //        
-//        bos2.close();
+////        bos2.close();
 //        write(t2.size() + 8);
 //        crc.reset();
 //        write("zTXt".getBytes());
@@ -191,8 +204,22 @@ public class PNGEncoder extends Object {
 //        write(0);
 //        write(t2.toByteArray());
 //        write((int) crc.getValue());
-//        
-//        System.out.println("zTxt length = " + t2.size());
+        
+        String author = "希尔瓦娜斯";
+        PngChunkZTXT z2 = new PngChunkZTXT(null);
+		z2.setKeyVal("author", new String(author.getBytes("ISO-8859-1")));
+		byte[] zdata = z2.createRawChunk().data;
+		int len = zdata.length;
+		write(len + 8);
+		crc.reset();
+		write("zTXt".getBytes());
+//		write("author".getBytes());
+//		write(0);
+//		write(0);
+		write(zdata);
+		write((int) crc.getValue());
+		
+		this.printHexString(zdata);
         
 //			example        
 //        @Override
@@ -263,4 +290,13 @@ public class PNGEncoder extends Object {
                 | ((data[offset + 1] & 0xFF) << 16)
                 | ((data[offset + 2] & 0xFF) << 8) | (data[offset + 3] & 0xFF);
     }
+    public static void printHexString( byte[] b) {  
+ 	   for (int i = 0; i < b.length; i++) { 
+ 	     String hex = Integer.toHexString(b[i] & 0xFF); 
+ 	     if (hex.length() == 1) { 
+ 	       hex = '0' + hex; 
+ 	     } 
+ 	     System.out.print(hex.toUpperCase() + " " ); 
+ 	   } 
+ 	}
 }
