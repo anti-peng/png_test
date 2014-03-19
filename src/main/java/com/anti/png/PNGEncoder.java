@@ -199,7 +199,7 @@ public class PNGEncoder extends Object {
 //        DeflaterOutputStream o2 = new DeflaterOutputStream(t2);
 //        o2.write(authorStrbyte);
 //        o2.close();
-//        
+//          
 ////        bos2.close();
 //        write(t2.size() + 8);
 //        crc.reset();
