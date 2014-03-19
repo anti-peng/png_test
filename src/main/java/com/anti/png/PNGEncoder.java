@@ -107,6 +107,11 @@ public class PNGEncoder extends Object {
         crc.update(b);
     }
     
+    void writeOffsetCrc(byte b[], int off, int len) throws IOException {
+    	out.write(b);
+    	crc.update(b, off, len);
+    }
+    
     void writeX(byte b[]) throws IOException {
         out.write(b);
     }
@@ -177,10 +182,10 @@ public class PNGEncoder extends Object {
         byte[] chunk1 = new byte[]{122, 84, 88, 116};
         byte[] key1 = new byte[]{97, 117, 116, 104, 105, 100, 0, 0};
         byte[] value1 = new byte[]{120, -38, -45, 53, -79, 52, -73, 52, 48, 52, -76, 52, 1, 0, 11, 44, 2, 10, -97, 48, -128, -97};
-        write(len1);
-        write(chunk1);
-        write(key1);
-        write(value1);
+        writeX(len1);
+        writeX(chunk1);
+        writeX(key1);
+        writeX(value1);
 
         //写入zTxt 2
 //        String authorStr = "希尔瓦娜斯";
@@ -205,7 +210,7 @@ public class PNGEncoder extends Object {
 //        write(t2.toByteArray());
 //        write((int) crc.getValue());
         
-        String author = "希尔瓦娜斯";
+        String author = "";
         PngChunkZTXT z2 = new PngChunkZTXT(null);
 		z2.setKeyVal("author", new String(author.getBytes("ISO-8859-1")));
 		byte[] zdata = z2.createRawChunk().data;
@@ -213,13 +218,13 @@ public class PNGEncoder extends Object {
 		write(len + 8);
 		crc.reset();
 		write("zTXt".getBytes());
-//		write("author".getBytes());
-//		write(0);
-//		write(0);
 		write(zdata);
+//		writeOffsetCrc(zdata, 6, len);
 		write((int) crc.getValue());
 		
+		System.out.println("length = " + len);
 		this.printHexString(zdata);
+		System.out.println();
         
 //			example        
 //        @Override
@@ -262,8 +267,8 @@ public class PNGEncoder extends Object {
         	if(originalData[offset + 4] == 0x49 && originalData[offset + 5] == 0x44
                     && originalData[offset + 6] == 0x41 && originalData[offset + 7] == 0x54){
         		chunkLen = readInt(originalData, offset);
-        		System.out.println(chunkLen);	//1234_IDAT_DATA_CRC_ 这是data的长度
-        		System.out.println("offset=" + offset);		//这个是1234之前的数据块长度，实际长度从 58 - 58+4+4+chunkLen+4  
+//        		System.out.println(chunkLen);	//1234_IDAT_DATA_CRC_ 这是data的长度
+//        		System.out.println("offset=" + offset);		//这个是1234之前的数据块长度，实际长度从 58 - 58+4+4+chunkLen+4  
         		//for(58 ~ 58+4+4+chunkLen+4) --> write(byte[i])  --> 无损写入原数据
         		break;
         	}else{
