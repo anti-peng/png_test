@@ -1,71 +1,21 @@
-
-/*
- * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
- *
- * Copyright 1997-2007 Sun Microsystems, Inc. All rights reserved.
- *
- * The contents of this file are subject to the terms of either the GNU
- * General Public License Version 2 only ("GPL") or the Common
- * Development and Distribution License("CDDL") (collectively, the
- * "License"). You may not use this file except in compliance with the
- * License. You can obtain a copy of the License at
- * http://www.netbeans.org/cddl-gplv2.html
- * or nbbuild/licenses/CDDL-GPL-2-CP. See the License for the
- * specific language governing permissions and limitations under the
- * License.  When distributing the software, include this License Header
- * Notice in each file and include the License file at
- * nbbuild/licenses/CDDL-GPL-2-CP.  Sun designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Sun in the GPL Version 2 section of the License file that
- * accompanied this code. If applicable, add the following below the
- * License Header, with the fields enclosed by brackets [] replaced by
- * your own identifying information:
- * "Portions Copyrighted [year] [name of copyright owner]"
- *
- * Contributor(s): Alexandre Iline.
- *
- * The Original Software is the Jemmy library.
- * The Initial Developer of the Original Software is Alexandre Iline.
- * All Rights Reserved.
- *
- * If you wish your version of this file to be governed by only the CDDL
- * or only the GPL Version 2, indicate your decision by adding
- * "[Contributor] elects to include this software in this distribution
- * under the [CDDL or GPL Version 2] license." If you do not indicate a
- * single choice of license, a recipient has the option to distribute
- * your version of this file under either the CDDL, the GPL Version 2 or
- * to extend the choice of license to its licensees as provided above.
- * However, if you add GPL Version 2 code and therefore, elected the GPL
- * Version 2 license, then the option applies only if the new code is
- * made subject to such option by the copyright holder.
- *
- *
- *
- * $Id$ $Revision$ $Date$
- *
- */
-
 package com.anti.png;
 
 import java.awt.image.BufferedImage;
 import java.io.BufferedOutputStream;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.zip.CRC32;
 import java.util.zip.Deflater;
 import java.util.zip.DeflaterOutputStream;
+import java.util.zip.InflaterInputStream;
 
 import ar.com.hjg.pngj.PngHelperInternal;
 import ar.com.hjg.pngj.chunks.ChunkHelper;
 import ar.com.hjg.pngj.chunks.PngChunkZTXT;
 
-/** This class allows to encode BufferedImage into B/W, greyscale or true color PNG
- * image format with maximum compression.<br>
- * It also provides complete functionality for capturing full screen, part of
- * screen or single component, encoding and saving captured image info PNG file.
- * @author Adam Sotona
- * @version 1.0 */
 public class PNGEncoder extends Object {
 
     /** black and white image mode. */    
@@ -101,6 +51,12 @@ public class PNGEncoder extends Object {
         byte b[]={(byte)((i>>24)&0xff),(byte)((i>>16)&0xff),(byte)((i>>8)&0xff),(byte)(i&0xff)};
         write(b);
     }
+    
+    void write0(int i) throws IOException {
+        byte b[]={(byte)(i&0xff)};
+        write(b);
+    }
+    
     //写入byte并更新crc
     void write(byte b[]) throws IOException {
         out.write(b);
@@ -186,6 +142,36 @@ public class PNGEncoder extends Object {
         writeX(chunk1);
         writeX(key1);
         writeX(value1);
+        
+        write(27);
+        crc.reset();
+        write("zTXt".getBytes());
+        write("author".getBytes());
+        write0(0);
+        write0(0);
+        String author ="希尔瓦娜斯";
+//        byte[] authorbyte = ChunkHelper.compressBytes(ChunkHelper.toBytes(author), true);
+        ByteArrayInputStream inb = new ByteArrayInputStream(ChunkHelper.toBytesUTF8(author));
+        InputStream inx = inb;
+        ByteArrayOutputStream outb = new ByteArrayOutputStream();
+        OutputStream outx = new DeflaterOutputStream(outb);
+        inx.close();
+        outx.close();
+        write(outb.toByteArray());
+        write((int) crc.getValue());
+        
+        printHexString(outb.toByteArray());
+        
+//        ByteArrayInputStream inb = new ByteArrayInputStream(ori, offset, len);
+//		InputStream in = compress ? inb : new InflaterInputStream(inb, getInflater());
+//		ByteArrayOutputStream outb = new ByteArrayOutputStream();
+//		OutputStream out = compress ? new DeflaterOutputStream(outb) : outb;
+//		shovelInToOut(in, out);
+//		in.close();
+//		out.close();
+//		return outb.toByteArray();
+        
+//        printHexString(authorbyte);
 
         //写入zTxt 2
 //        String authorStr = "希尔瓦娜斯";
@@ -210,21 +196,20 @@ public class PNGEncoder extends Object {
 //        write(t2.toByteArray());
 //        write((int) crc.getValue());
         
-        String author = "";
-        PngChunkZTXT z2 = new PngChunkZTXT(null);
-		z2.setKeyVal("author", new String(author.getBytes("ISO-8859-1")));
-		byte[] zdata = z2.createRawChunk().data;
-		int len = zdata.length;
-		write(len + 8);
-		crc.reset();
-		write("zTXt".getBytes());
-		write(zdata);
-//		writeOffsetCrc(zdata, 6, len);
-		write((int) crc.getValue());
-		
-		System.out.println("length = " + len);
-		this.printHexString(zdata);
-		System.out.println();
+//        String author = "";
+//        PngChunkZTXT z2 = new PngChunkZTXT(null);
+//		z2.setKeyVal("author", new String(author.getBytes("ISO-8859-1")));
+//		byte[] zdata = z2.createRawChunk().data;
+//		int len = zdata.length;
+//		write(len + 8);
+//		crc.reset();
+//		write("zTXt".getBytes());
+//		write(zdata);
+//		write((int) crc.getValue());
+//		
+//		System.out.println("length = " + len);
+//		this.printHexString(zdata);
+//		System.out.println();
         
 //			example        
 //        @Override

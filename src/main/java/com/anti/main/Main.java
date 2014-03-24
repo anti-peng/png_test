@@ -20,6 +20,10 @@ import java.io.IOException;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageIO;
 
+import ar.com.hjg.pngj.IImageLine;
+import ar.com.hjg.pngj.PngReader;
+import ar.com.hjg.pngj.PngWriter;
+import ar.com.hjg.pngj.chunks.ChunkCopyBehaviour;
 import ar.com.hjg.pngj.chunks.PngChunkZTXT;
 
 import com.anti.png.PNGEncoder;
@@ -46,7 +50,7 @@ public class Main {
         g2.dispose();          
         // output
         //FOR development only, when online, # this line
-//        ImageIO.write(img, "png", new File("/Users/Anti/Desktop/tt.png"));   // 2,5 kb
+        ImageIO.write(img, "png", new File("/Users/Anti/Desktop/tt.png"));   // 2,5 kb
         
 		System.out.println("done image transform.");
 		
@@ -71,6 +75,23 @@ public class Main {
 		os.close();
 		
 		System.out.println("all done ~~~");
+		
+		//it seemed that it works !
+		//try get tt.png, and rewrite tt.png
+//		File imgfile = new File("/Users/Anti/Desktop/tt.png");
+//		PngReader reader = new PngReader(imgfile);
+//		
+//		PngWriter writer = new PngWriter(new File("/Users/Anti/Desktop/t2.png"), reader.imgInfo, true);
+//		writer.copyChunksFrom(reader.getChunksList(), ChunkCopyBehaviour.COPY_ALL);
+//		writer.getMetadata().setText("author", "希尔瓦娜斯", true, true);
+//		
+//		for(int row = 0; row < reader.imgInfo.rows; row++){
+//			IImageLine l1 = reader.readRow();
+//			writer.writeRow(l1);
+//		}
+//		
+//		reader.end();
+//		writer.end();
 		
 	}
 	
