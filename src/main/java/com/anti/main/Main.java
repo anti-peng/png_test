@@ -6,12 +6,14 @@ import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.awt.Graphics2D;
 import java.awt.image.IndexColorModel;
 import java.io.File;
+import java.util.Arrays;
 
 import javax.imageio.ImageIO;
 
@@ -62,23 +64,19 @@ public class Main {
 //		data_reader.end();
 //		writer.end();
 		
-		//change the sequence of the chunks - put zTXt chunks ahead of PLTE
-		//找到ztxt1, ztxt2
-		//新建byte[]
-		//找到gama，写入源头文件+GAMA
-		//写入ztxt1, ztxt2
-		//写入源IDAT-ztxt开始
-		//写入end
-		//流终止
+		//3. 找到各个chunk
 		File f = new File("/Users/anti/Desktop/mmluna/application/final.png");
-		BufferedImage img = ImageIO.read(f);
-		ByteArrayOutputStream out = new ByteArrayOutputStream();
-		ImageIO.write(img, "png", out);
-		System.out.println("file length = " + out.toByteArray().length);
-//		getChunkName(out.toByteArray());
-		antiPng(out.toByteArray());
-		out.close();
-		System.out.println("done");
+		FileInputStream fis = new FileInputStream(f);
+		int length = (int) f.length();
+		ByteArrayOutputStream bos = new ByteArrayOutputStream(length);
+		byte[] b = new byte[length];
+		int n;
+		while((n = fis.read(b)) != -1){
+			bos.write(b, 0, n);
+		}
+		fis.close();
+		bos.close();
+		antiPng(bos.toByteArray());
 	}
 	
 	void write(int i) throws IOException {
@@ -95,94 +93,70 @@ public class Main {
 	     System.out.print(hex.toUpperCase() ); 
 	   } 
 	}
-	
-//	int offset = 8;
-//    int chunkLen = 0;
-//    while(true){
-//    	if(originalData[offset + 4] == 0x49 && originalData[offset + 5] == 0x44
-//                && originalData[offset + 6] == 0x41 && originalData[offset + 7] == 0x54){
-//    		chunkLen = readInt(originalData, offset);
-////    		System.out.println(chunkLen);	//1234_IDAT_DATA_CRC_ 这是data的长度
-////    		System.out.println("offset=" + offset);		//这个是1234之前的数据块长度，实际长度从 58 - 58+4+4+chunkLen+4  
-//    		//for(58 ~ 58+4+4+chunkLen+4) --> write(byte[i])  --> 无损写入原数据
-//    		break;
-//    	}else{
-//    		chunkLen = readInt(originalData, offset);
-//    		offset += (4 + 4 + chunkLen + 4);
-//    	}
-//    }
-//    byte[] xx = new byte[chunkLen+12];
-//    for(int i = offset; i <= (offset+11+chunkLen); i++){
-//    	xx[i-offset] = originalData[i];
-//    }
-//    writeX(xx);
-	
-	private static void getChunkName(byte[] b){
-		int offset = 4;
-		int chunkLen = 0;
-		int flag = 0;
-		while(true){
-			//zTXt
-			if(b[offset + 1] == 0x7A && b[offset + 2] == 0x54 && b[offset + 3] == 0x58 && b[offset + 4] == 0x74){
-				System.out.println(offset);
-				byte[] x = new byte[]{b[offset-3], b[offset-2], b[offset-1], b[offset]};
-				printHexString(x);
-				System.out.println("?");
-				flag += 1;
-				if(flag == 2)
-					break;
-			}
-			chunkLen = readInt(b, offset);
-			offset += (4 + 4 + chunkLen + 4);
-		}
-	}
 
 	private static int readInt(byte[] data, int offset) {
         return ((data[offset] & 0xFF) << 24)
                 | ((data[offset + 1] & 0xFF) << 16)
                 | ((data[offset + 2] & 0xFF) << 8) | (data[offset + 3] & 0xFF);
     }
-	private static long readLong(byte[] buf){
-		return (((buf[0]&0xffL)<<56)|((buf[1]&0xffL)<<48)|
-                ((buf[2]&0xffL)<<40)|((buf[3]&0xffL)<<32)|((buf[4]&0xffL)<<24)|
-                  ((buf[5]&0xffL)<<16)|((buf[6]&0xffL)<<8)|(buf[7]&0xffL));
-	}
 	
-	private static void antiPng(byte[] b){
+	private static void antiPng(byte[] b) throws Exception{
 		
 		int offset = 0;
-		
 		offset += 8;//8 .PNG
-		
-		byte[] shit = new byte[]{b[37], b[38], b[39], b[40]};
-		System.out.println(new String(shit));
 		System.out.println("=====");
-		printHexString(shit);
+		
+		int index_plte = 0;
+		int length_plte = 0;
+		int index_ztxt1 = 0;
+		int length_ztxt1 = 0;
+		int index_ztxt2 = 0;
+		int length_ztxt2 = 0;
 		
 		while(true){
-			int zTXt_count = 0;
 			System.out.println("offset = " + offset);
 			int chunk_len = readInt(b, offset);	//chunk length
 			System.out.println("chunLen = " + chunk_len);
 			int chunk_offset = offset;
 			byte[] xx = new byte[]{b[chunk_offset+4], b[chunk_offset+5], b[chunk_offset+6], b[chunk_offset+7]};
-			printHexString(xx);
+			String chunk_name = new String(xx);
+			System.out.println(new String(xx));	//print chunk name
 			System.out.println();
-			if(b[chunk_offset + 4] == 0x7A && b[chunk_offset + 5] == 0x54 && b[chunk_offset + 6] == 0x58 && b[chunk_offset + 7] == 0x74){
-				//打印chunk_type
-				byte[] x = new byte[]{b[chunk_offset+4], b[chunk_offset+5], b[chunk_offset+6], b[chunk_offset+7]};
-				printHexString(x);
-				zTXt_count += 1;
-				if(zTXt_count == 2)
-					break;
+			//还是改成放在IDAT前面吧  这样有保证  放在PLTE后面不能保证ZTXT一定在IDAT前面啊
+			//先在游戏中测试一下ZTXT的什么位置才能跑得起来再做  基本框架已经成型
+			//在b中删除ztxt的方法还没找到  不知道有木有Arrays.removeRange...
+			if(chunk_name.equals("IDAT")){
+				index_plte = offset;
+				length_plte = readInt(b, offset);
 			}
+			else if(chunk_name.equals("zTXt")){
+				if(index_ztxt1 == 0){
+					index_ztxt1 = offset;
+					length_ztxt1 = readInt(b, offset);
+				}
+				else{
+					index_ztxt2 = offset;
+					length_ztxt2 = readInt(b, offset);
+				}
+			}
+			else if(chunk_name.equals("IEND"))
+				break;
+			
 			//recount offset
 			offset += (4 + 4 + chunk_len + 4);
+		}	
+		
+		//rewrite byte
+		File doneFile = new File("/Users/anti/Desktop/mmluna/application/this.png");
+		FileOutputStream fos = new FileOutputStream(doneFile);
+		BufferedOutputStream bos = new BufferedOutputStream(fos);
+		
+		//if chunk PLTE is before chunk zTXt
+		//同时假设plte在idat的前面，
+		if(index_plte < index_ztxt1){
+			bos.write(Arrays.copyOfRange(b, 0, index_plte + 4 + 4 + length_plte + 4 - 1));
+			bos.write(Arrays.copyOfRange(b, index_ztxt1, 4 + 4 + length_ztxt1 + 4 - 1));
+			bos.write(Arrays.copyOfRange(b, index_ztxt2, 4 + 4 + length_ztxt2 + 4 - 1));
 		}
-		
-		//游戏本来的图片结构是 png, IHDR, PLTE, ZTXT, ZTXT, IDAT, IEND
-		//含有gAMA信息的图片，解析的时候好像被自动忽略了
-		//现在写得PLTE没用上，都是从原图copy的，但是原图可能只有两种颜色-》因为是从游戏中直接画得话。。。
-		
 	}
 }
